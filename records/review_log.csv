@@ -1,0 +1,2 @@
+date,tsla_state,us_momentum_score,event_score,a_confirm_score,total_score,action,selected_a_shares
+2026-02-20,趋势扩张,4,2,3,9,允许参与（T+1仅观察预设池放量确认，T+3/T+5统一平仓）,"300024,002747,601689"
