@@ -1,0 +1,72 @@
+# 跨市场映射系统 1.0（Python 半自动化）
+
+把“美股映射 A 股”固化为流程：
+
+1. **数据源模块**：固定记录 TSLA 指标。
+2. **情绪判定模块**：趋势扩张 / 震荡 / 回撤。
+3. **产业映射模块**：固定三大映射池（季度更新）。
+4. **评分过滤模块**：10 分制，`>=6` 才开仓观察。
+5. **执行与复盘模块**：T 日评分，T+1 只看预设池，T+3/T+5 统一平仓。
+
+## 文件结构
+
+- `mapping_system.py`：主程序（CLI）
+- `config/pools.json`：固定映射池配置
+- `data/`：输入数据（手工或脚本生成）
+- `records/review_log.csv`：复盘记录
+
+## 输入格式
+
+### `data/tsla_daily.csv`
+
+必需字段：
+
+- `date`（YYYY-MM-DD）
+- `close`
+- `pct_change`（单日涨跌幅，%）
+- `daily_volatility`（单日波动率，%）
+- `vol_3d`（3日波动率，%）
+- `volume`
+- `volume_ma20`
+- `breakout`（true/false）
+- `ma5`
+
+### `data/ashare_daily.csv`
+
+必需字段：
+
+- `date`
+- `ticker`
+- `name`
+- `pool`
+- `pct_change`
+- `volume`
+- `volume_ma5`
+
+### `data/events.json`
+
+```json
+{
+  "2026-02-20": {"event_intensity": 2}
+}
+```
+
+## 使用
+
+```bash
+python mapping_system.py --date 2026-02-20
+```
+
+可选参数：
+
+```bash
+python mapping_system.py \
+  --date 2026-02-20 \
+  --tsla-csv data/tsla_daily.csv \
+  --ashare-csv data/ashare_daily.csv \
+  --events-json data/events.json \
+  --pools-json config/pools.json \
+  --log-csv records/review_log.csv
+```
+
+> 半自动化建议：日终用脚本拉取 TSLA/A 股数据并覆盖 `data/` 文件，本程序负责统一评分、过滤和日志。
