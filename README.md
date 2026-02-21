@@ -10,8 +10,7 @@
 
 ## 文件结构
 
-- `mapping_system.py`：主程序（CLI + 核心评分函数）
-- `web_app.py`：网页版服务（无第三方依赖）
+- `mapping_system.py`：主程序（CLI）
 - `config/pools.json`：固定映射池配置
 - `data/`：输入数据（手工或脚本生成）
 - `records/review_log.csv`：复盘记录
@@ -52,7 +51,7 @@
 }
 ```
 
-## 使用（命令行）
+## 使用
 
 ```bash
 python mapping_system.py --date 2026-02-20
@@ -69,17 +68,5 @@ python mapping_system.py \
   --pools-json config/pools.json \
   --log-csv records/review_log.csv
 ```
-
-## 使用（网页版）
-
-```bash
-python web_app.py
-```
-
-启动后访问：`http://127.0.0.1:8000`。
-
-- 页面输入评估日期后，自动计算 10 分制评分。
-- 页面显示执行建议和重点观察标的。
-- 当前版本读取本地 `data/` 示例数据，可接日终自动化数据更新。
 
 > 半自动化建议：日终用脚本拉取 TSLA/A 股数据并覆盖 `data/` 文件，本程序负责统一评分、过滤和日志。
