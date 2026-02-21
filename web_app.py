@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import html
 from datetime import datetime
-import os
 from urllib.parse import parse_qs
 from wsgiref.simple_server import make_server
 
@@ -103,8 +102,8 @@ def app(environ, start_response):
 
 
 def main() -> None:
-    host = os.getenv("HOST", "0.0.0.0")
-    port = int(os.getenv("PORT", "3000"))
+    host = "0.0.0.0"
+    port = 8000
     print(f"Web 服务启动: http://{host}:{port}")
     with make_server(host, port, app) as server:
         server.serve_forever()

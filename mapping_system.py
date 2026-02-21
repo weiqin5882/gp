@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-"""跨市场映射系统 1.0（Python 半自动化版）"""
+"""跨市场映射系统 1.0（Python 半自动化版）
+
+核心流程：
+1) 读取 TSLA 每日数据（固定时间记录）
+2) 判定情绪状态（趋势扩张/震荡/回撤）
+3) 按固定映射池检查 A 股联动确认
+4) 输出 10 分制评分与执行建议，并写入复盘日志
+"""
 
 from __future__ import annotations
 
@@ -183,14 +190,10 @@ def write_review_log(path: Path, row: Dict[str, str]) -> None:
         writer.writerow(row)
 
 
-def compute_result(
-    target_date: str,
-    tsla_csv: str,
-    ashare_csv: str,
-    events_json: str,
-    pools_json: str,
-) -> Dict[str, object]:
-    tsla_rows = read_tsla_csv(Path(tsla_csv))
+def evaluate(args: argparse.Namespace) -> int:
+    tsla_rows = read_tsla_csv(Path(args.tsla_csv))
+    target_date = args.date
+
     idx_map = {r.date: i for i, r in enumerate(tsla_rows)}
     if target_date not in idx_map:
         raise ValueError(f"TSLA 数据中不存在日期: {target_date}")
@@ -199,70 +202,41 @@ def compute_result(
     tsla_today = tsla_rows[i]
     tsla_prev = tsla_rows[i - 1] if i > 0 else None
 
-    pools = read_pools(Path(pools_json))
-    a_records = read_ashare_csv(Path(ashare_csv), target_date)
+    pools = read_pools(Path(args.pools_json))
+    a_records = read_ashare_csv(Path(args.ashare_csv), target_date)
 
     state, us_score, state_notes = classify_sentiment(tsla_today, tsla_prev)
-    event_score = read_event_intensity(Path(events_json), target_date)
+    event_score = read_event_intensity(Path(args.events_json), target_date)
     a_score, picks, a_notes = ashare_confirmation_score(a_records, pools)
 
     total = us_score + event_score + a_score
     action = decide_action(total, state)
 
-    return {
-        "date": target_date,
-        "state": state,
-        "us_score": us_score,
-        "event_score": event_score,
-        "a_score": a_score,
-        "total": total,
-        "action": action,
-        "state_notes": state_notes,
-        "a_notes": a_notes,
-        "picks": picks,
-    }
-
-
-def print_result(result: Dict[str, object]) -> None:
     print("=" * 60)
-    print(f"日期: {result['date']}")
-    print(f"TSLA 情绪状态: {result['state']}")
-    print(
-        f"美股动能: {result['us_score']}/4 | 事件强度: {result['event_score']}/3 | A股确认: {result['a_score']}/3"
-    )
-    print(f"总分: {result['total']}/10")
-    print(f"执行建议: {result['action']}")
-    print("- 情绪说明:", "；".join(result["state_notes"]))
-    print("- A股说明:", "；".join(result["a_notes"]))
-    if result["picks"]:
+    print(f"日期: {target_date}")
+    print(f"TSLA 情绪状态: {state}")
+    print(f"美股动能: {us_score}/4 | 事件强度: {event_score}/3 | A股确认: {a_score}/3")
+    print(f"总分: {total}/10")
+    print(f"执行建议: {action}")
+    print("- 情绪说明:", "；".join(state_notes))
+    print("- A股说明:", "；".join(a_notes))
+    if picks:
         print("- 重点观察:")
-        for p in result["picks"]:
+        for p in picks:
             print(f"  * {p.ticker} {p.name} ({p.pool}) 涨幅{p.pct_change:.2f}% 量比{p.volume_ratio:.2f}")
     print("=" * 60)
 
-
-def evaluate(args: argparse.Namespace) -> int:
-    result = compute_result(
-        target_date=args.date,
-        tsla_csv=args.tsla_csv,
-        ashare_csv=args.ashare_csv,
-        events_json=args.events_json,
-        pools_json=args.pools_json,
-    )
-    print_result(result)
-
     if args.log_csv:
-        picks = result["picks"]
         write_review_log(
             Path(args.log_csv),
             {
-                "date": str(result["date"]),
-                "tsla_state": str(result["state"]),
-                "us_momentum_score": str(result["us_score"]),
-                "event_score": str(result["event_score"]),
-                "a_confirm_score": str(result["a_score"]),
-                "total_score": str(result["total"]),
-                "action": str(result["action"]),
+                "date": target_date,
+                "tsla_state": state,
+                "us_momentum_score": str(us_score),
+                "event_score": str(event_score),
+                "a_confirm_score": str(a_score),
+                "total_score": str(total),
+                "action": action,
                 "selected_a_shares": ",".join(p.ticker for p in picks),
             },
         )
